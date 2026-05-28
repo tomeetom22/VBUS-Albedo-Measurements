@@ -26,6 +26,11 @@ installed shunt resistor or LI-COR millivolt adapter.
 | Down Facing LI-200R | `LI200R_mV`, `SW_Down` | Differential channel 1 | Diff 1 H / U1 | Diff 1 L / U2 | `1003 ohms` |
 | Up Facing LI-200R | `LI200R_Up_mV`, `SW_Up` | Differential channel 4 | Diff 4 H / U7 | Diff 4 L / U8 | `999 ohms` |
 
+In the program variable names, `SW_Down` and `SW_Up` refer to sensor
+orientation. The down-facing sensor measures reflected shortwave from the
+surface, and the up-facing sensor measures incoming shortwave from the sky.
+Albedo is calculated as `SW_Down / SW_Up`.
+
 Place each shunt resistor across that sensor's high and low signal terminals.
 If irradiance is negative in sunlight, swap that sensor's high/low leads or
 change the corresponding multiplier sign in the program.

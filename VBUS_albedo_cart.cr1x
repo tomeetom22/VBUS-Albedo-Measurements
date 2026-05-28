@@ -7,8 +7,8 @@
 '
 'Logger: Campbell Scientific CR1000X
 'Sensors: LI-COR LI-200R pyranometers
-'Inputs:  Downwelling LI-200R on differential channel 1
-'         Upwelling LI-200R on differential channel 4
+'Inputs:  Down-facing LI-200R on differential channel 1
+'         Up-facing LI-200R on differential channel 4
 '
 'Wiring notes:
 '  - LI-200R bare-lead sensors produce a current signal, not a voltage signal.
@@ -178,6 +178,9 @@ BeginProg
     VoltDiff (LI200R_Up_mV, 1, mV200, 4, True, 0, 15000, 1, 0)
 
     'Convert measured millivolts to shortwave irradiance.
+    'SW_Down and SW_Up refer to sensor orientation:
+    '  SW_Down = down-facing sensor, reflected shortwave from the surface.
+    '  SW_Up   = up-facing sensor, incoming shortwave from the sky.
     SW_Down = LI200R_mV * LI200R_Down_Wm2_per_mV
     SW_Up = LI200R_Up_mV * LI200R_Up_Wm2_per_mV
 
@@ -185,8 +188,9 @@ BeginProg
     If SW_Down < 0 Then SW_Down = 0
     If SW_Up < 0 Then SW_Up = 0
 
-    If SW_Down > 0 Then
-      Albedo = SW_Up / SW_Down
+    'Albedo is reflected / incoming.
+    If SW_Up > 0 Then
+      Albedo = SW_Down / SW_Up
     Else
       Albedo = NAN
     EndIf
