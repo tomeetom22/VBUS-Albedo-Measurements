@@ -1,0 +1,192 @@
+'CR1000X Series Datalogger
+'Program Name: albedo_test.cr1x
+'Purpose: Starter program for testing two LI-COR LI-200R pyranometers
+'         with Garmin GPS on a mobile albedo cart.
+'
+'Logger: Campbell Scientific CR1000X
+'Sensors: LI-COR LI-200R pyranometers
+'Inputs:  Downwelling LI-200R on differential channel 1
+'         Upwelling LI-200R on differential channel 4
+'
+'Wiring notes:
+'  - LI-200R bare-lead sensors produce a current signal, not a voltage signal.
+'  - To read the sensor with VoltDiff, the current must be converted to voltage
+'    with a precision shunt resistor or with the LI-COR millivolt adapter.
+'  - For a shunt resistor, place the resistor across each sensor's H and L
+'    terminals. Connect the sensor signal across the same two points. Tie the
+'    low side to logger ground only if that matches your wiring/adaptor
+'    instructions.
+'
+'Calibration notes:
+'  - Replace each LI200R calibration constant with the exact value from that
+'    sensor's certificate. LI-COR lists LI-200R sensitivity in microamps per
+'    1000 W/m^2; a typical value is about 75 uA per 1000 W/m^2.
+'  - Replace Shunt_Ohms with the actual shunt or adapter resistance.
+'  - Multiplier derivation when measuring millivolts:
+'      mV at 1000 W/m^2 = Cal_uA_per_1000 * Shunt_Ohms / 1000
+'      W/m^2 per mV     = 1000000 / (Cal_uA_per_1000 * Shunt_Ohms)
+
+PipeLineMode
+
+'----------------USER CHANGEABLE INPUTS-----------------
+
+Const TableSize_Hours = 24
+
+'Update these after checking each sensor calibration certificate and wiring.
+Const LI200R_Down_Cal_uA_per_1000 = 59.82
+Const LI200R_Up_Cal_uA_per_1000 = 63.61
+Const Shunt_Ohms_Down = 1003
+Const Shunt_Ohms_Up = 999
+
+'If a reading is negative in sunlight, swap that sensor's leads or make that
+'sensor's multiplier negative.
+Const LI200R_Down_Wm2_per_mV = 1000000 / (LI200R_Down_Cal_uA_per_1000 * Shunt_Ohms_Down)
+Const LI200R_Up_Wm2_per_mV = 1000000 / (LI200R_Up_Cal_uA_per_1000 * Shunt_Ohms_Up)
+
+'Measurement timing.
+Const ScanRate_Sec = 1
+Const StoreInterval_Sec = 60
+
+'GPS setup from Garmin.CR1X.
+Const GPSBaudrate = 38400
+Const BaudrateSet = "Baudrate(COMC1)"
+
+'----------------SENSOR AND LOGGER VARIABLES------------
+
+Dim NMEASent(2) As String * 100
+
+Public PTemp
+Public Batt_Volt
+Public LI200R_mV
+Public LI200R_Up_mV
+Public SW_Down
+Public SW_Up
+Public Albedo
+Public GPSData(15)
+
+Alias GPSData(1)=Latitude_A
+Alias GPSData(2)=Latitude_B
+Alias GPSData(3)=Longitude_A
+Alias GPSData(4)=Longitude_B
+Alias GPSData(5)=Speed
+Alias GPSData(6)=Course
+Alias GPSData(7)=MagVar
+Alias GPSData(8)=FixQual
+Alias GPSData(9)=NumSats
+Alias GPSData(10)=Altitude
+Alias GPSData(11)=PPS
+Alias GPSData(12)=SecSinceGPRMC
+Alias GPSData(13)=GPSReady
+Alias GPSData(14)=MaxClockChange
+Alias GPSData(15)=NumClockChange
+
+Units PTemp = deg C
+Units Batt_Volt = V
+Units LI200R_mV = mV
+Units LI200R_Up_mV = mV
+Units SW_Down = W/m^2
+Units SW_Up = W/m^2
+Units Albedo = ratio
+Units Latitude_A = degrees
+Units Latitude_B = minutes
+Units Longitude_A = degrees
+Units Longitude_B = minutes
+Units Speed = knots
+Units Course = degrees
+Units MagVar = degrees
+Units FixQual = code
+Units NumSats = count
+Units Altitude = meters
+Units PPS = microseconds
+Units SecSinceGPRMC = seconds
+Units GPSReady = count
+Units MaxClockChange = milliseconds
+Units NumClockChange = count
+
+'----------------DATA TABLES----------------------------
+
+'One-minute calibration table. The scan still runs at 1 Hz; this table stores
+'summary statistics from those 60 one-second measurements.
+DataTable (Calibration_60s, True, -1)
+  DataInterval (0, StoreInterval_Sec, Sec, 10)
+  TableFile ("CRD:" & Status.SerialNumber(1,1) & ".Albedo_10s_", 64, -1, 0, TableSize_Hours, Hr, 0, 0)
+
+  Average (1, LI200R_mV, IEEE4, False)
+  Minimum (1, LI200R_mV, IEEE4, False, False)
+  Maximum (1, LI200R_mV, IEEE4, False, False)
+  StdDev (1, LI200R_mV, IEEE4, False)
+  Average (1, LI200R_Up_mV, IEEE4, False)
+  Minimum (1, LI200R_Up_mV, IEEE4, False, False)
+  Maximum (1, LI200R_Up_mV, IEEE4, False, False)
+  StdDev (1, LI200R_Up_mV, IEEE4, False)
+
+  Average (1, SW_Down, IEEE4, False)
+  Minimum (1, SW_Down, IEEE4, False, False)
+  Maximum (1, SW_Down, IEEE4, False, False)
+  StdDev (1, SW_Down, IEEE4, False)
+  Average (1, SW_Up, IEEE4, False)
+  Minimum (1, SW_Up, IEEE4, False, False)
+  Maximum (1, SW_Up, IEEE4, False, False)
+  StdDev (1, SW_Up, IEEE4, False)
+
+  Average (1, Albedo, IEEE4, False)
+  Minimum (1, Albedo, IEEE4, False, False)
+  Maximum (1, Albedo, IEEE4, False, False)
+  StdDev (1, Albedo, IEEE4, False)
+
+  Sample (1, Latitude_A, IEEE4)
+  Sample (1, Latitude_B, IEEE4)
+  Sample (1, Longitude_A, IEEE4)
+  Sample (1, Longitude_B, IEEE4)
+  Sample (1, Speed, IEEE4)
+  Sample (1, Course, IEEE4)
+  Sample (1, Altitude, IEEE4)
+  Sample (1, FixQual, FP2)
+  Sample (1, NumSats, FP2)
+  Sample (1, SecSinceGPRMC, IEEE4)
+  Sample (1, GPSReady, FP2)
+  Sample (1, Batt_Volt, FP2)
+  Sample (1, PTemp, FP2)
+EndTable
+
+'----------------MAIN PROGRAM---------------------------
+
+BeginProg
+  SetStatus (BaudrateSet, GPSBaudrate)
+  'Configure ComC1 for 3.3V for the GPS16X-HVS GPS Receiver.
+  PortPairConfig (C1, 2)
+
+  Scan (ScanRate_Sec, Sec, 0, 0)
+    'Logger health measurements.
+    PanelTemp (PTemp, 15000)
+    Battery (Batt_Volt)
+
+    'Garmin GPS16X-HVS on ComC1, matching Garmin.CR1X.
+    'The datalogger clock will be synchronized to GPS time.
+    GPS (GPSData(), ComC1, -6*3600, 500, NMEASent(1))
+
+    'LI-200R on differential channel 1.
+    'mV200 is a good starting range for a shunted LI-200R. For example, a
+    '75 uA/1000 W/m^2 sensor with a 1000 ohm shunt produces about 75 mV at
+    '1000 W/m^2, well within this range.
+    ' 4th input represents COM port
+    VoltDiff (LI200R_mV, 1, mV200, 1, True, 0, 15000, 1, 0)
+    VoltDiff (LI200R_Up_mV, 1, mV200, 4, True, 0, 15000, 1, 0)
+
+    'Convert measured millivolts to shortwave irradiance.
+    SW_Down = LI200R_mV * LI200R_Down_Wm2_per_mV
+    SW_Up = LI200R_Up_mV * LI200R_Up_Wm2_per_mV
+
+    'Keep nighttime/noise values from becoming small negative irradiance values.
+    If SW_Down < 0 Then SW_Down = 0
+    If SW_Up < 0 Then SW_Up = 0
+
+    If SW_Down > 0 Then
+      Albedo = SW_Up / SW_Down
+    Else
+      Albedo = NAN
+    EndIf
+
+    CallTable Calibration_60s
+  NextScan
+EndProg

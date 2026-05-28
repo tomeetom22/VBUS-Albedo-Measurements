@@ -1,0 +1,88 @@
+5/14/2026
+13:23:13
+Created by Short Cut (4.4)
+Short Cut Program:  Garmin.DEF
+
+-Wiring for CR1000X Series-
+
+  GPS16X-HVS
+    12V:  Red
+    G:  Black
+    G:  Yellow
+    G:  Blue
+    G:  Clear
+    C1:  Grey
+    C2:  White
+
+-Measurement Labels-
+
+  Default
+    BattV
+    PTemp_C
+
+  GPS16X-HVS
+    NMEASent(1)
+    NMEASent(2)
+    Latitude_A
+    Latitude_B
+    Longitude_A
+    Longitude_B
+    Speed
+    Course
+    MagVar
+    FixQual
+    NumSats
+    Altitude
+    PPS
+    SecSinceGPRMC
+    GPSReady
+    MaxClockChange
+    NumClockChange
+
+----------------------------------------------------
+Table: Table1
+Interval: 10 SEC
+Fields:
+ Latitude_A	Units: degrees
+ Latitude_B	Units: minutes
+ Longitude_A	Units: degrees
+ Longitude_B	Units: minutes
+ Speed	Units: knots
+ Altitude	Units: meters
+ NMEASent(1)
+ NMEASent(2)
+
+----------------------------------------------------
+Table: DataTableInfo
+Fields:
+ DataTableName(1)
+ SkippedRecord
+ DataRecordSize(1,1)	Units: records
+ DataRecordSize(1,2)	Units: records
+ SecsPerRecord
+ DataFillDays(1,1)	Units: days
+ DataFillDays(1,2)	Units: days
+ DataFilled(1,1)
+ DataFilled(1,2)
+
+----------------------------------------------------
+Table: Public
+Fields:
+ BattV	Units: Volts
+ PTemp_C	Units: Deg C
+ Latitude_A	Units: degrees
+ Latitude_B	Units: minutes
+ Longitude_A	Units: degrees
+ Longitude_B	Units: minutes
+ Speed	Units: knots
+ Course	Units: degrees
+ MagVar	Units: degrees
+ FixQual	Units: code
+ NumSats	Units: count
+ Altitude	Units: meters
+ PPS	Units: microseconds
+ SecSinceGPRMC	Units: seconds
+ GPSReady	Units: count
+ MaxClockChange	Units: milliseconds
+ NumClockChange	Units: count
+

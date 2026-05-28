@@ -1,0 +1,11 @@
+# Keep source files as text with predictable line endings.
+* text=auto
+
+*.cr1x text eol=crlf
+*.CR1X text eol=crlf
+*.CR3 text eol=crlf
+*.DEF text eol=crlf
+*.TDF text eol=crlf
+*.SCW text eol=crlf
+*.py text eol=lf
+*.md text eol=lf

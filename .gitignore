@@ -1,0 +1,24 @@
+# Campbell datalogger output and converted data files.
+*.dat
+TOA5_*.dat
+
+# Python local/runtime files.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Editor and OS clutter.
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+
+# Temporary/export files.
+*.tmp
+*.bak
+*.log
+*.csv
+*.xlsx
