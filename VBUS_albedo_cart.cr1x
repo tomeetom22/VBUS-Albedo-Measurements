@@ -1,7 +1,9 @@
 'CR1000X Series Datalogger
-'Program Name: albedo_test.cr1x
-'Purpose: Starter program for testing two LI-COR LI-200R pyranometers
-'         with Garmin GPS on a mobile albedo cart.
+'Program Name: VBUS_albedo_cart.cr1x
+'Purpose: Walking albedo measurement program for two LI-COR LI-200R
+'         pyranometers with Garmin GPS on the VBUS mobile albedo cart.
+'         The program records 10-second averages while the cart is walked
+'         across the site.
 '
 'Logger: Campbell Scientific CR1000X
 'Sensors: LI-COR LI-200R pyranometers
@@ -43,9 +45,11 @@ Const Shunt_Ohms_Up = 999
 Const LI200R_Down_Wm2_per_mV = 1000000 / (LI200R_Down_Cal_uA_per_1000 * Shunt_Ohms_Down)
 Const LI200R_Up_Wm2_per_mV = 1000000 / (LI200R_Up_Cal_uA_per_1000 * Shunt_Ohms_Up)
 
-'Measurement timing.
+'Measurement timing for walking transects. The logger scans once per second
+'and stores 10-second averages to better resolve site-scale changes while
+'walking with the cart.
 Const ScanRate_Sec = 1
-Const StoreInterval_Sec = 60
+Const StoreInterval_Sec = 10
 
 'GPS setup from Garmin.CR1X.
 Const GPSBaudrate = 38400
@@ -105,9 +109,9 @@ Units NumClockChange = count
 
 '----------------DATA TABLES----------------------------
 
-'One-minute calibration table. The scan still runs at 1 Hz; this table stores
-'summary statistics from those 60 one-second measurements.
-DataTable (Calibration_60s, True, -1)
+'Walking albedo measurement table. The scan still runs at 1 Hz; this table
+'stores summary statistics from each set of 10 one-second measurements.
+DataTable (Albedo_10s, True, -1)
   DataInterval (0, StoreInterval_Sec, Sec, 10)
   TableFile ("CRD:" & Status.SerialNumber(1,1) & ".Albedo_10s_", 64, -1, 0, TableSize_Hours, Hr, 0, 0)
 
@@ -187,6 +191,6 @@ BeginProg
       Albedo = NAN
     EndIf
 
-    CallTable Calibration_60s
+    CallTable Albedo_10s
   NextScan
 EndProg
