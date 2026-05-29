@@ -68,6 +68,8 @@ Public SW_Up
 Public Albedo
 Public GPSData(15)
 
+'GPS() fills GPSData in the order below. The plotting script later converts
+'Latitude_A/B and Longitude_A/B from degree/minute fields to decimal degrees.
 Alias GPSData(1)=Latitude_A
 Alias GPSData(2)=Latitude_B
 Alias GPSData(3)=Longitude_A
@@ -114,14 +116,18 @@ Units NumClockChange = count
 'control, filtering, and summary statistics later in post-processing.
 DataTable (Albedo_1Hz, True, -1)
   DataInterval (0, StoreInterval_Sec, Sec, 10)
+  'Write rolling files to the CRD card with the logger serial number in the
+  'file name. TableSize_Hours controls how much data each file contains.
   TableFile ("CRD:" & Status.SerialNumber(1,1) & ".Albedo_1Hz_", 64, -1, 0, TableSize_Hours, Hr, 0, 0)
 
+  'Radiation and albedo fields used by the time-series plots.
   Sample (1, LI200R_mV, IEEE4)
   Sample (1, LI200R_Up_mV, IEEE4)
   Sample (1, SW_Down, IEEE4)
   Sample (1, SW_Up, IEEE4)
   Sample (1, Albedo, IEEE4)
 
+  'GPS and logger health fields used by the spatial plot and quality checks.
   Sample (1, Latitude_A, IEEE4)
   Sample (1, Latitude_B, IEEE4)
   Sample (1, Longitude_A, IEEE4)
@@ -157,7 +163,7 @@ BeginProg
     'mV200 is a good starting range for a shunted LI-200R. For example, a
     '75 uA/1000 W/m^2 sensor with a 1000 ohm shunt produces about 75 mV at
     '1000 W/m^2, well within this range.
-    ' 4th input represents COM port
+    'The fourth VoltDiff argument is the differential channel number.
     VoltDiff (LI200R_mV, 1, mV200, 1, True, 0, 15000, 1, 0)
     VoltDiff (LI200R_Up_mV, 1, mV200, 4, True, 0, 15000, 1, 0)
 

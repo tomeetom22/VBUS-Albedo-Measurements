@@ -1,3 +1,5 @@
+"""Plot basic time-series summaries from Campbell TOA5 albedo files."""
+
 from pathlib import Path
 import re
 
@@ -5,6 +7,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Folder containing Campbell TOA5 data files exported from the logger.
+# This script expects the averaged 10-second output columns, such as
+# Albedo_Avg, SW_Down_Avg, and SW_Up_Avg.
 data_folder = Path("./Data")
 
 
@@ -32,6 +36,8 @@ def measure_sort_key(path):
 
 def read_toa5_folder(folder):
     """Read every TOA5 .dat file in a folder and append them into one DataFrame."""
+    # Only .dat files directly in Data are read; files in subfolders such as
+    # Data/Unconverted are intentionally ignored.
     data_files = sorted(folder.glob("*.dat"), key=measure_sort_key)
 
     if not data_files:
@@ -58,9 +64,15 @@ print(data.head())
 print(data.columns)
 
 # Calculate the reference median from physically reasonable albedo values only.
-# Values above this threshold are treated as skewed/outlier points.
-median_albedo_max = 1.2
-median_data = data.loc[data["Albedo_Avg"] <= median_albedo_max, "Albedo_Avg"].dropna()
+# The strict 0-1 filter keeps noise, nighttime values, and impossible ratios
+# from skewing the reference line.
+median_albedo_min = 0
+median_albedo_max = 1
+median_data = data.loc[
+    (data["Albedo_Avg"] > median_albedo_min)
+    & (data["Albedo_Avg"] < median_albedo_max),
+    "Albedo_Avg",
+].dropna()
 median_albedo = median_data.median()
 
 # Plot calculated albedo over time.
@@ -72,7 +84,10 @@ if pd.notna(median_albedo):
         color="tab:red",
         linestyle="--",
         linewidth=1.5,
-        label=f"Median albedo <= {median_albedo_max:g} = {median_albedo:.3f}",
+        label=(
+            f"Median {median_albedo_min:g} < albedo < "
+            f"{median_albedo_max:g} = {median_albedo:.3f}"
+        ),
     )
     plt.annotate(
         f"Median: {median_albedo:.3f}",
