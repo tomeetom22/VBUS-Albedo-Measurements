@@ -2,8 +2,9 @@
 'Program Name: VBUS_albedo_cart.cr1x
 'Purpose: Walking albedo measurement program for two LI-COR LI-200R
 '         pyranometers with Garmin GPS on the VBUS mobile albedo cart.
-'         The program records 10-second averages while the cart is walked
-'         across the site.
+'         The program records raw 1 Hz samples while the cart is walked across
+'         the site so filtering and summary statistics can be done later during
+'         post-processing.
 '
 'Logger: Campbell Scientific CR1000X
 'Sensors: LI-COR LI-200R pyranometers
@@ -46,10 +47,9 @@ Const LI200R_Down_Wm2_per_mV = 1000000 / (LI200R_Down_Cal_uA_per_1000 * Shunt_Oh
 Const LI200R_Up_Wm2_per_mV = 1000000 / (LI200R_Up_Cal_uA_per_1000 * Shunt_Ohms_Up)
 
 'Measurement timing for walking transects. The logger scans once per second
-'and stores 10-second averages to better resolve site-scale changes while
-'walking with the cart.
+'and stores each one-second sample directly.
 Const ScanRate_Sec = 1
-Const StoreInterval_Sec = 10
+Const StoreInterval_Sec = 1
 
 'GPS setup from Garmin.CR1X.
 Const GPSBaudrate = 38400
@@ -109,34 +109,18 @@ Units NumClockChange = count
 
 '----------------DATA TABLES----------------------------
 
-'Walking albedo measurement table. The scan still runs at 1 Hz; this table
-'stores summary statistics from each set of 10 one-second measurements.
-DataTable (Albedo_10s, True, -1)
+'Walking albedo measurement table. This table stores the raw 1 Hz scanned
+'values without averages, minima, maxima, or standard deviations. Do quality
+'control, filtering, and summary statistics later in post-processing.
+DataTable (Albedo_1Hz, True, -1)
   DataInterval (0, StoreInterval_Sec, Sec, 10)
-  TableFile ("CRD:" & Status.SerialNumber(1,1) & ".Albedo_10s_", 64, -1, 0, TableSize_Hours, Hr, 0, 0)
+  TableFile ("CRD:" & Status.SerialNumber(1,1) & ".Albedo_1Hz_", 64, -1, 0, TableSize_Hours, Hr, 0, 0)
 
-  Average (1, LI200R_mV, IEEE4, False)
-  Minimum (1, LI200R_mV, IEEE4, False, False)
-  Maximum (1, LI200R_mV, IEEE4, False, False)
-  StdDev (1, LI200R_mV, IEEE4, False)
-  Average (1, LI200R_Up_mV, IEEE4, False)
-  Minimum (1, LI200R_Up_mV, IEEE4, False, False)
-  Maximum (1, LI200R_Up_mV, IEEE4, False, False)
-  StdDev (1, LI200R_Up_mV, IEEE4, False)
-
-  Average (1, SW_Down, IEEE4, False)
-  Minimum (1, SW_Down, IEEE4, False, False)
-  Maximum (1, SW_Down, IEEE4, False, False)
-  StdDev (1, SW_Down, IEEE4, False)
-  Average (1, SW_Up, IEEE4, False)
-  Minimum (1, SW_Up, IEEE4, False, False)
-  Maximum (1, SW_Up, IEEE4, False, False)
-  StdDev (1, SW_Up, IEEE4, False)
-
-  Average (1, Albedo, IEEE4, False)
-  Minimum (1, Albedo, IEEE4, False, False)
-  Maximum (1, Albedo, IEEE4, False, False)
-  StdDev (1, Albedo, IEEE4, False)
+  Sample (1, LI200R_mV, IEEE4)
+  Sample (1, LI200R_Up_mV, IEEE4)
+  Sample (1, SW_Down, IEEE4)
+  Sample (1, SW_Up, IEEE4)
+  Sample (1, Albedo, IEEE4)
 
   Sample (1, Latitude_A, IEEE4)
   Sample (1, Latitude_B, IEEE4)
@@ -195,6 +179,6 @@ BeginProg
       Albedo = NAN
     EndIf
 
-    CallTable Albedo_10s
+    CallTable Albedo_1Hz
   NextScan
 EndProg
