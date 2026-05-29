@@ -1,6 +1,5 @@
 # Campbell datalogger output and converted data files.
 *.dat
-TOA5_*.dat
 
 # Python local/runtime files.
 __pycache__/
