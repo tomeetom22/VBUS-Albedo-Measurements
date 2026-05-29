@@ -19,3 +19,6 @@ Desktop.ini
 *.log
 *.csv
 *.xlsx
+
+# Ignore Old Test Files
+Albedo_Testing_Old/
