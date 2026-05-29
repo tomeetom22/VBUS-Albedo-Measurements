@@ -1,6 +1,3 @@
-# Campbell datalogger output and converted data files.
-*.dat
-
 # Python local/runtime files.
 __pycache__/
 *.py[cod]
@@ -12,6 +9,7 @@ env/
 # Editor and OS clutter.
 .vscode/
 .idea/
+.DS_Store
 Thumbs.db
 Desktop.ini
 
