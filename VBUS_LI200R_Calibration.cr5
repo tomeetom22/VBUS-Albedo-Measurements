@@ -1,0 +1,319 @@
+'CR5000 Datalogger
+'Program Name: VBUS_LI200R_Calibration.cr5
+'Purpose: One-minute comparison/calibration table for up to twenty LI-COR
+'         LI-200R pyranometers wired to a CR5000.
+'
+'Logger: Campbell Scientific CR5000
+'Sensors: LI-COR LI-200R pyranometers
+'Inputs:  LI-200R sensors on differential channels 1 through 20.
+'         Differential channel 1 uses terminals 1H/1L, channel 2 uses 2H/2L,
+'         and so on through channel 20.
+'
+'Wiring notes:
+'  - Bare-lead LI-200R sensors produce current, not voltage.
+'  - To read them with VoltDiff, convert current to voltage with a precision
+'    shunt resistor or LI-COR millivolt adapter at each sensor input.
+'  - Enter the measured shunt resistance and LI-COR certificate sensitivity
+'    for each sensor in the USER CHANGEABLE INPUTS section.
+'
+'Calibration notes:
+'  - LI-COR lists LI-200R sensitivity in microamps per 1000 W/m^2.
+'  - mV at 1000 W/m^2 = Cal_uA_per_1000 * Shunt_Ohms / 1000
+'  - W/m^2 per mV     = 1000000 / (Cal_uA_per_1000 * Shunt_Ohms)
+'
+'GPS note:
+'  - The GPS block below follows the GPS() pattern used in the CR1000X cart
+'    program. Confirm your CR5000 OS/compiler supports GPS() on your selected
+'    port. If not, replace this block with serial parsing once the GPS port
+'    hardware is selected.
+
+PipeLineMode
+
+'----------------USER CHANGEABLE INPUTS-----------------
+
+Const NumSensors = 20
+Const ScanRate_Sec = 1
+Const ReportMin = 1
+
+'The CR5000 has 20 differential voltage inputs. Reduce NumSensors only if
+'fewer channels are wired, starting at differential channel 1.
+Const FirstDiffChan = 1
+
+'mV200 covers a typical LI-200R with a 1000 ohm shunt. For example, a
+'75 uA/1000 W/m^2 sensor produces about 75 mV at 1000 W/m^2.
+Const VoltageRange = mV200
+Const ReverseDiff = True
+Const Settling_us = 0
+Const Integ_us = 16667
+
+'GPS setup. Change GPSComPort after the final GPS wiring is chosen.
+Const GPSComPort = Com1
+Const LocalTZ_Hr = -6
+Const MaxClockDiff_ms = 500
+
+'Per-sensor LI-200R sensitivity from each calibration certificate.
+'Replace these placeholder values before deployment.
+Public Cal_uA_1000(20)
+Alias Cal_uA_1000(1)=S01_Cal_uA_1000
+Alias Cal_uA_1000(2)=S02_Cal_uA_1000
+Alias Cal_uA_1000(3)=S03_Cal_uA_1000
+Alias Cal_uA_1000(4)=S04_Cal_uA_1000
+Alias Cal_uA_1000(5)=S05_Cal_uA_1000
+Alias Cal_uA_1000(6)=S06_Cal_uA_1000
+Alias Cal_uA_1000(7)=S07_Cal_uA_1000
+Alias Cal_uA_1000(8)=S08_Cal_uA_1000
+Alias Cal_uA_1000(9)=S09_Cal_uA_1000
+Alias Cal_uA_1000(10)=S10_Cal_uA_1000
+Alias Cal_uA_1000(11)=S11_Cal_uA_1000
+Alias Cal_uA_1000(12)=S12_Cal_uA_1000
+Alias Cal_uA_1000(13)=S13_Cal_uA_1000
+Alias Cal_uA_1000(14)=S14_Cal_uA_1000
+Alias Cal_uA_1000(15)=S15_Cal_uA_1000
+Alias Cal_uA_1000(16)=S16_Cal_uA_1000
+Alias Cal_uA_1000(17)=S17_Cal_uA_1000
+Alias Cal_uA_1000(18)=S18_Cal_uA_1000
+Alias Cal_uA_1000(19)=S19_Cal_uA_1000
+Alias Cal_uA_1000(20)=S20_Cal_uA_1000
+
+'Measured shunt resistor/adaptor resistance for each sensor.
+Public Shunt_Ohms(20)
+Alias Shunt_Ohms(1)=S01_Shunt_Ohms
+Alias Shunt_Ohms(2)=S02_Shunt_Ohms
+Alias Shunt_Ohms(3)=S03_Shunt_Ohms
+Alias Shunt_Ohms(4)=S04_Shunt_Ohms
+Alias Shunt_Ohms(5)=S05_Shunt_Ohms
+Alias Shunt_Ohms(6)=S06_Shunt_Ohms
+Alias Shunt_Ohms(7)=S07_Shunt_Ohms
+Alias Shunt_Ohms(8)=S08_Shunt_Ohms
+Alias Shunt_Ohms(9)=S09_Shunt_Ohms
+Alias Shunt_Ohms(10)=S10_Shunt_Ohms
+Alias Shunt_Ohms(11)=S11_Shunt_Ohms
+Alias Shunt_Ohms(12)=S12_Shunt_Ohms
+Alias Shunt_Ohms(13)=S13_Shunt_Ohms
+Alias Shunt_Ohms(14)=S14_Shunt_Ohms
+Alias Shunt_Ohms(15)=S15_Shunt_Ohms
+Alias Shunt_Ohms(16)=S16_Shunt_Ohms
+Alias Shunt_Ohms(17)=S17_Shunt_Ohms
+Alias Shunt_Ohms(18)=S18_Shunt_Ohms
+Alias Shunt_Ohms(19)=S19_Shunt_Ohms
+Alias Shunt_Ohms(20)=S20_Shunt_Ohms
+
+'----------------SENSOR AND LOGGER VARIABLES------------
+
+Dim Sensor
+Dim NMEASent(2) As String * 100
+
+Public PTemp
+Public Batt_Volt
+Public LI200R_mV(20)
+Public SW_Wm2(20)
+Public Wm2_mV(20)
+Public GPSData(15)
+
+Alias LI200R_mV(1)=S01_mV
+Alias LI200R_mV(2)=S02_mV
+Alias LI200R_mV(3)=S03_mV
+Alias LI200R_mV(4)=S04_mV
+Alias LI200R_mV(5)=S05_mV
+Alias LI200R_mV(6)=S06_mV
+Alias LI200R_mV(7)=S07_mV
+Alias LI200R_mV(8)=S08_mV
+Alias LI200R_mV(9)=S09_mV
+Alias LI200R_mV(10)=S10_mV
+Alias LI200R_mV(11)=S11_mV
+Alias LI200R_mV(12)=S12_mV
+Alias LI200R_mV(13)=S13_mV
+Alias LI200R_mV(14)=S14_mV
+Alias LI200R_mV(15)=S15_mV
+Alias LI200R_mV(16)=S16_mV
+Alias LI200R_mV(17)=S17_mV
+Alias LI200R_mV(18)=S18_mV
+Alias LI200R_mV(19)=S19_mV
+Alias LI200R_mV(20)=S20_mV
+
+Alias SW_Wm2(1)=S01_SW
+Alias SW_Wm2(2)=S02_SW
+Alias SW_Wm2(3)=S03_SW
+Alias SW_Wm2(4)=S04_SW
+Alias SW_Wm2(5)=S05_SW
+Alias SW_Wm2(6)=S06_SW
+Alias SW_Wm2(7)=S07_SW
+Alias SW_Wm2(8)=S08_SW
+Alias SW_Wm2(9)=S09_SW
+Alias SW_Wm2(10)=S10_SW
+Alias SW_Wm2(11)=S11_SW
+Alias SW_Wm2(12)=S12_SW
+Alias SW_Wm2(13)=S13_SW
+Alias SW_Wm2(14)=S14_SW
+Alias SW_Wm2(15)=S15_SW
+Alias SW_Wm2(16)=S16_SW
+Alias SW_Wm2(17)=S17_SW
+Alias SW_Wm2(18)=S18_SW
+Alias SW_Wm2(19)=S19_SW
+Alias SW_Wm2(20)=S20_SW
+
+Alias Wm2_mV(1)=S01_Wm2_mV
+Alias Wm2_mV(2)=S02_Wm2_mV
+Alias Wm2_mV(3)=S03_Wm2_mV
+Alias Wm2_mV(4)=S04_Wm2_mV
+Alias Wm2_mV(5)=S05_Wm2_mV
+Alias Wm2_mV(6)=S06_Wm2_mV
+Alias Wm2_mV(7)=S07_Wm2_mV
+Alias Wm2_mV(8)=S08_Wm2_mV
+Alias Wm2_mV(9)=S09_Wm2_mV
+Alias Wm2_mV(10)=S10_Wm2_mV
+Alias Wm2_mV(11)=S11_Wm2_mV
+Alias Wm2_mV(12)=S12_Wm2_mV
+Alias Wm2_mV(13)=S13_Wm2_mV
+Alias Wm2_mV(14)=S14_Wm2_mV
+Alias Wm2_mV(15)=S15_Wm2_mV
+Alias Wm2_mV(16)=S16_Wm2_mV
+Alias Wm2_mV(17)=S17_Wm2_mV
+Alias Wm2_mV(18)=S18_Wm2_mV
+Alias Wm2_mV(19)=S19_Wm2_mV
+Alias Wm2_mV(20)=S20_Wm2_mV
+
+Alias GPSData(1)=Latitude_A
+Alias GPSData(2)=Latitude_B
+Alias GPSData(3)=Longitude_A
+Alias GPSData(4)=Longitude_B
+Alias GPSData(5)=Speed
+Alias GPSData(6)=Course
+Alias GPSData(7)=MagVar
+Alias GPSData(8)=FixQual
+Alias GPSData(9)=NumSats
+Alias GPSData(10)=Altitude
+Alias GPSData(11)=PPS
+Alias GPSData(12)=SecSinceGPRMC
+Alias GPSData(13)=GPSReady
+Alias GPSData(14)=MaxClockChange
+Alias GPSData(15)=NumClockChange
+
+Units PTemp = deg C
+Units Batt_Volt = V
+Units LI200R_mV() = mV
+Units SW_Wm2() = W/m^2
+Units Wm2_mV() = W/m^2/mV
+Units Cal_uA_1000() = uA/1000_W/m^2
+Units Shunt_Ohms() = ohms
+Units Latitude_A = degrees
+Units Latitude_B = minutes
+Units Longitude_A = degrees
+Units Longitude_B = minutes
+Units Speed = knots
+Units Course = degrees
+Units MagVar = degrees
+Units FixQual = code
+Units NumSats = count
+Units Altitude = meters
+Units PPS = microseconds
+Units SecSinceGPRMC = seconds
+Units GPSReady = count
+Units MaxClockChange = milliseconds
+Units NumClockChange = count
+
+'----------------DATA TABLES----------------------------
+
+'One-minute calibration table. The logger scans at 1 Hz, but only the
+'one-minute mean and standard deviation are stored for each sensor.
+DataTable (LI1Min, True, -1)
+  DataInterval (0, ReportMin, Min, 10)
+  CardOut (0, -1)
+
+  Average (NumSensors, LI200R_mV(), IEEE4, 0)
+  StdDev (NumSensors, LI200R_mV(), IEEE4, 0)
+  Average (NumSensors, SW_Wm2(), IEEE4, 0)
+  StdDev (NumSensors, SW_Wm2(), IEEE4, 0)
+  Sample (NumSensors, Cal_uA_1000(), IEEE4)
+  Sample (NumSensors, Shunt_Ohms(), IEEE4)
+  Sample (NumSensors, Wm2_mV(), IEEE4)
+
+  Sample (1, Latitude_A, IEEE4)
+  Sample (1, Latitude_B, IEEE4)
+  Sample (1, Longitude_A, IEEE4)
+  Sample (1, Longitude_B, IEEE4)
+  Sample (1, Speed, IEEE4)
+  Sample (1, Course, IEEE4)
+  Sample (1, Altitude, IEEE4)
+  Sample (1, FixQual, FP2)
+  Sample (1, NumSats, FP2)
+  Sample (1, SecSinceGPRMC, IEEE4)
+  Sample (1, GPSReady, FP2)
+  Sample (1, Batt_Volt, FP2)
+  Sample (1, PTemp, FP2)
+EndTable
+
+'----------------MAIN PROGRAM---------------------------
+
+BeginProg
+  'Default placeholders. Replace these with measured values for the actual
+  'sensor and resistor pair at each CR5000 differential channel.
+  S01_Cal_uA_1000 = 75.00
+  S02_Cal_uA_1000 = 75.00
+  S03_Cal_uA_1000 = 75.00
+  S04_Cal_uA_1000 = 75.00
+  S05_Cal_uA_1000 = 75.00
+  S06_Cal_uA_1000 = 75.00
+  S07_Cal_uA_1000 = 75.00
+  S08_Cal_uA_1000 = 75.00
+  S09_Cal_uA_1000 = 75.00
+  S10_Cal_uA_1000 = 75.00
+  S11_Cal_uA_1000 = 75.00
+  S12_Cal_uA_1000 = 75.00
+  S13_Cal_uA_1000 = 75.00
+  S14_Cal_uA_1000 = 75.00
+  S15_Cal_uA_1000 = 75.00
+  S16_Cal_uA_1000 = 75.00
+  S17_Cal_uA_1000 = 75.00
+  S18_Cal_uA_1000 = 75.00
+  S19_Cal_uA_1000 = 75.00
+  S20_Cal_uA_1000 = 75.00
+
+  S01_Shunt_Ohms = 1000
+  S02_Shunt_Ohms = 1000
+  S03_Shunt_Ohms = 1000
+  S04_Shunt_Ohms = 1000
+  S05_Shunt_Ohms = 1000
+  S06_Shunt_Ohms = 1000
+  S07_Shunt_Ohms = 1000
+  S08_Shunt_Ohms = 1000
+  S09_Shunt_Ohms = 1000
+  S10_Shunt_Ohms = 1000
+  S11_Shunt_Ohms = 1000
+  S12_Shunt_Ohms = 1000
+  S13_Shunt_Ohms = 1000
+  S14_Shunt_Ohms = 1000
+  S15_Shunt_Ohms = 1000
+  S16_Shunt_Ohms = 1000
+  S17_Shunt_Ohms = 1000
+  S18_Shunt_Ohms = 1000
+  S19_Shunt_Ohms = 1000
+  S20_Shunt_Ohms = 1000
+
+  Scan (ScanRate_Sec, Sec, 0, 0)
+    PanelTemp (PTemp, 250)
+    Battery (Batt_Volt)
+
+    'Garmin GPS-style logic. Change GPSComPort once the final port is known.
+    GPS (GPSData(), GPSComPort, LocalTZ_Hr * 3600, MaxClockDiff_ms, NMEASent(1))
+
+    'Measure all wired LI-200Rs once per second on consecutive differential
+    'channels starting at FirstDiffChan.
+    VoltDiff (LI200R_mV(), NumSensors, VoltageRange, FirstDiffChan, ReverseDiff, Settling_us, Integ_us, 1, 0)
+
+    For Sensor = 1 To NumSensors
+      If Cal_uA_1000(Sensor) > 0 AND Shunt_Ohms(Sensor) > 0 Then
+        Wm2_mV(Sensor) = 1000000 / (Cal_uA_1000(Sensor) * Shunt_Ohms(Sensor))
+        SW_Wm2(Sensor) = LI200R_mV(Sensor) * Wm2_mV(Sensor)
+      Else
+        Wm2_mV(Sensor) = NAN
+        SW_Wm2(Sensor) = NAN
+      EndIf
+
+      'Negative irradiance is usually nighttime noise or reversed polarity.
+      If SW_Wm2(Sensor) < 0 Then SW_Wm2(Sensor) = 0
+    Next Sensor
+
+    CallTable LI1Min
+  NextScan
+EndProg
