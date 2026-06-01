@@ -192,28 +192,6 @@ def plot_albedo_over_time(data):
         linestyle="-",
     )
 
-    if pd.notna(median_albedo):
-        ax.axhline(
-            median_albedo,
-            color="tab:red",
-            linestyle="--",
-            linewidth=1.5,
-            label=(
-                f"Median {median_albedo_min:g} < albedo < "
-                f"{median_albedo_max:g} = {median_albedo:.3f}"
-            ),
-        )
-        ax.annotate(
-            f"Median: {median_albedo:.3f}",
-            xy=(plot_data["TIMESTAMP"].iloc[-1], median_albedo),
-            xytext=(-10, 8),
-            textcoords="offset points",
-            ha="right",
-            va="bottom",
-            color="tab:red",
-        )
-        ax.legend()
-
     ax.set_xlabel("Time")
     ax.set_ylabel("Albedo")
     ax.set_title("Albedo vs Time")
