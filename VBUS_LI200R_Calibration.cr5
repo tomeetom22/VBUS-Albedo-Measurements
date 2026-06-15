@@ -52,7 +52,9 @@ Const LocalTZ_Hr = -6
 Const MaxClockDiff_ms = 500
 
 'Per-sensor LI-200R sensitivity from each calibration certificate.
-'Replace these placeholder values before deployment.
+'Channels 1 and 2 use the current cart values from VBUS_albedo_cart.cr1x.
+'Channels 3-20 use generic nonzero test defaults so the program can run while
+'additional sensors are wired and checked.
 Public Cal_uA_1000(20)
 Alias Cal_uA_1000(1)=S01_Cal_uA_1000
 Alias Cal_uA_1000(2)=S02_Cal_uA_1000
@@ -246,10 +248,14 @@ EndTable
 '----------------MAIN PROGRAM---------------------------
 
 BeginProg
-  'Default placeholders. Replace these with measured values for the actual
-  'sensor and resistor pair at each CR5000 differential channel.
-  S01_Cal_uA_1000 = 75.00
-  S02_Cal_uA_1000 = 75.00
+  'Runnable test defaults.
+  'Channels 1 and 2 match the CR1000X albedo cart program:
+  '  Channel 1: down-facing LI-200R, 59.82 uA/1000 W/m^2, 1003 ohm shunt.
+  '  Channel 2: up-facing LI-200R,   63.61 uA/1000 W/m^2, 999 ohm shunt.
+  'Channels 3-20 use generic LI-200R values until each sensor/shunt pair is
+  'measured and entered.
+  S01_Cal_uA_1000 = 59.82
+  S02_Cal_uA_1000 = 63.61
   S03_Cal_uA_1000 = 75.00
   S04_Cal_uA_1000 = 75.00
   S05_Cal_uA_1000 = 75.00
@@ -269,8 +275,8 @@ BeginProg
   S19_Cal_uA_1000 = 75.00
   S20_Cal_uA_1000 = 75.00
 
-  S01_Shunt_Ohms = 1000
-  S02_Shunt_Ohms = 1000
+  S01_Shunt_Ohms = 1003
+  S02_Shunt_Ohms = 999
   S03_Shunt_Ohms = 1000
   S04_Shunt_Ohms = 1000
   S05_Shunt_Ohms = 1000
