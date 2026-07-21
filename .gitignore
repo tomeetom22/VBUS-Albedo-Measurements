@@ -17,8 +17,6 @@ Desktop.ini
 *.tmp
 *.bak
 *.log
-*.csv
-*.xlsx
 3142*
 
 # Ignore Old Test Files
