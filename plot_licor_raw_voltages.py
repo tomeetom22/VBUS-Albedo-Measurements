@@ -26,12 +26,13 @@ import matplotlib.pyplot as plt
 NUM_SENSORS = 20
 # Change this default if you usually want a different x-axis sensor.
 # Use -1 to make the x axis the median across all sensors.
-DEFAULT_REFERENCE_SENSOR = 2
+DEFAULT_REFERENCE_SENSOR = -1
 RAW_START_COL = 4
 MISSING_THRESHOLD = -7990.0
 DEFAULT_SHUNT_OHMS = 1000.0
 DEFAULT_DAYLIGHT_START_HOUR = 6
 DEFAULT_DAYLIGHT_END_HOUR = 20
+HIGHLIGHT_ACTIVE_SENSORS = True
 DEFAULT_INPUT_FILE = Path(__file__).with_name("CSV_1474.LI1Min_2026_07_13_1614.dat")
 DEFAULT_CONNECTIONS_FILE = Path(__file__).with_name("LI200R_Connections.csv")
 DEFAULT_CALIBRATION_FILE = (
@@ -538,7 +539,7 @@ def write_plot(
             color="#1f77b4",
         )
         title_options = {"fontsize": 10}
-        if is_active_sensor(labels[sensor]):
+        if HIGHLIGHT_ACTIVE_SENSORS and is_active_sensor(labels[sensor]):
             title_options.update(
                 {
                     "fontweight": "bold",
@@ -576,20 +577,6 @@ def write_plot(
         cutoff_start = "start" if start_time is None else start_time.strftime("%m-%d %H:%M")
         cutoff_end = "end" if end_time is None else end_time.strftime("%m-%d %H:%M")
         cutoff_text = f" | cutoff: {cutoff_start} to {cutoff_end}"
-
-    figure.text(
-        0.01,
-        0.01,
-        (
-            f"{source_path.name} | valid rows: {len(rows)} | "
-            f"plotted rows: {len(sampled_rows)} | "
-            f"x-axis: {footer_reference} | "
-            f"daylight: {daylight_start_hour:02d}:00-{daylight_end_hour:02d}:00"
-            f"{cutoff_text}"
-        ),
-        fontsize=9,
-        color="#444444",
-    )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     figure.savefig(output_path, dpi=200)
