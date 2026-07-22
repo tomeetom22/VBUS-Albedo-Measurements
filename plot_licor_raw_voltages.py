@@ -32,7 +32,9 @@ MISSING_THRESHOLD = -7990.0
 DEFAULT_SHUNT_OHMS = 1000.0
 DEFAULT_DAYLIGHT_START_HOUR = 6
 DEFAULT_DAYLIGHT_END_HOUR = 20
-HIGHLIGHT_ACTIVE_SENSORS = True
+# Change these dates here to limit the plotted period. Use M-D HH:MM.
+DEFAULT_START_CUTOFF = "7-15 14:00"
+DEFAULT_END_CUTOFF = "7-15 18:30"
 DEFAULT_INPUT_FILE = Path(__file__).with_name("CSV_1474.LI1Min_2026_07_13_1614.dat")
 DEFAULT_CONNECTIONS_FILE = Path(__file__).with_name("LI200R_Connections.csv")
 DEFAULT_CALIBRATION_FILE = (
@@ -124,12 +126,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--start",
-        default=None,
+        default=DEFAULT_START_CUTOFF,
         help="Optional start cutoff as M-D HH:MM; year is taken from the data",
     )
     parser.add_argument(
         "--end",
-        default=None,
+        default=DEFAULT_END_CUTOFF,
         help="Optional end cutoff as M-D HH:MM; year is taken from the data",
     )
     return parser.parse_args()
@@ -485,6 +487,37 @@ def correlation(x_values: list[float], y_values: list[float]) -> float | None:
     return numerator / denominator
 
 
+def comparison_metrics(
+    x_values: list[float],
+    y_values: list[float],
+) -> tuple[float | None, float | None, float | None]:
+    """Return r^2, y scale factor, and RMSE after scaling y to x."""
+    if len(x_values) != len(y_values) or len(x_values) < 2:
+        return None, None, None
+
+    y_squared = sum(y_value**2 for y_value in y_values)
+    if y_squared == 0:
+        y_scale = None
+    else:
+        y_scale = sum(
+            x_value * y_value for x_value, y_value in zip(x_values, y_values)
+        ) / y_squared
+
+    r_value = correlation(x_values, y_values)
+    r_squared = None if r_value is None else r_value**2
+    if y_scale is None:
+        scaled_rmse = None
+    else:
+        scaled_rmse = math.sqrt(
+            sum(
+                (x_value - y_scale * y_value) ** 2
+                for x_value, y_value in zip(x_values, y_values)
+            )
+            / len(x_values)
+        )
+    return r_squared, y_scale, scaled_rmse
+
+
 def write_plot(
     rows: list[list[float]],
     sampled_rows: list[list[float]],
@@ -508,11 +541,25 @@ def write_plot(
     columns = 5
     rows_count = math.ceil(len(compared_sensors) / columns)
 
+    # Use identical limits across every panel so comparisons are made in the
+    # same coordinate system and the one-to-one line has the same meaning.
+    x_low = min(sampled_reference_values)
+    x_high = max(sampled_reference_values)
+
+    def padded_limits(low: float, high: float) -> tuple[float, float]:
+        span = high - low
+        padding = 0.05 * span if span else max(abs(low) * 0.05, 1.0)
+        return low - padding, high + padding
+
+    x_limits = padded_limits(x_low, x_high)
+    y_limits = (0.0, 1200.0)
+
     figure, axes = plt.subplots(
         rows_count,
         columns,
         figsize=(16, 10),
         sharex=True,
+        sharey=True,
         constrained_layout=True,
     )
     axes_list = list(axes.flat)
@@ -527,8 +574,19 @@ def write_plot(
     for axis, sensor in zip(axes_list, compared_sensors):
         y_values = [values[sensor] for values in rows]
         sampled_y_values = [values[sensor] for values in sampled_rows]
-        r_value = correlation(reference_values, y_values)
-        r_label = "r = n/a" if r_value is None else f"r = {r_value:.3f}"
+        r_squared, y_scale, scaled_rmse = comparison_metrics(
+            reference_values,
+            y_values,
+        )
+        if r_squared is None:
+            scale_label = "y scale = n/a"
+            annotation_label = "r^2 = n/a\nscaled RMSE = n/a"
+        else:
+            scale_label = f"y scale = {y_scale:.3f}"
+            annotation_label = (
+                f"r^2 = {r_squared:.3f}\n"
+                f"scaled RMSE = {scaled_rmse:.1f} W/m^2"
+            )
 
         axis.scatter(
             sampled_reference_values,
@@ -538,6 +596,8 @@ def write_plot(
             linewidths=0,
             color="#1f77b4",
         )
+        axis.set_xlim(x_limits)
+        axis.set_ylim(y_limits)
         title_options = {"fontsize": 10}
         if HIGHLIGHT_ACTIVE_SENSORS and is_active_sensor(labels[sensor]):
             title_options.update(
@@ -551,11 +611,25 @@ def write_plot(
                     },
                 }
             )
-        axis.set_title(f"{labels[sensor]}  {r_label}", **title_options)
+        axis.set_title(f"{labels[sensor]}  {scale_label}", **title_options)
+        axis.text(
+            0.03,
+            0.96,
+            annotation_label,
+            transform=axis.transAxes,
+            va="top",
+            ha="left",
+            fontsize=8,
+            color="#444444",
+            bbox={
+                "facecolor": "white",
+                "edgecolor": "none",
+                "alpha": 0.7,
+                "pad": 2,
+            },
+        )
         axis.grid(True, alpha=0.25, linewidth=0.7)
 
-        x_limits = axis.get_xlim()
-        y_limits = axis.get_ylim()
         low = max(x_limits[0], y_limits[0])
         high = min(x_limits[1], y_limits[1])
         if high > low:
