@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Compare median-centered LI-200R distributions with the median.
+"""Compare commonly centered LI-200R distributions with the median.
 
 The plotted interval defaults to the same start and end cutoffs used by
 ``plot_licor_raw_voltages.py``. Each panel contains a shaded KDE for one
 calibrated sensor and a shaded KDE for the per-timestamp median of all sensors.
-Both distributions are centered on their own interval median.
+All distributions use the same centering value: the interval median of the
+across-sensor median series.
 """
 
 from __future__ import annotations
@@ -43,6 +44,8 @@ from plot_licor_raw_voltages import (
 
 
 DEFAULT_BIN_COUNT = 200
+DEFAULT_X_MIN = -500.0
+DEFAULT_X_MAX = 400.0
 SENSOR_COLOR = "#1f77b4"
 MEDIAN_COLOR = "#d95f02"
 
@@ -135,14 +138,6 @@ def kde_values(values: np.ndarray, x_grid: np.ndarray) -> np.ndarray:
     return gaussian_kde(values)(x_grid)
 
 
-def padded_limits(values: np.ndarray) -> tuple[float, float]:
-    low = float(np.min(values))
-    high = float(np.max(values))
-    span = high - low
-    padding = 0.05 * span if span else max(abs(low) * 0.05, 1.0)
-    return low - padding, high + padding
-
-
 def add_distribution(
     axis: plt.Axes,
     values: np.ndarray,
@@ -191,12 +186,13 @@ def write_plot(
     data = np.asarray(rows, dtype=float)
     median_values = np.median(data, axis=1)
 
-    # Center each distribution on its interval median so zero represents the
-    # typical value for both the individual sensor and the reference.
-    data = data - np.median(data, axis=0)
-    median_values = median_values - np.median(median_values)
-    all_values = np.concatenate((data.ravel(), median_values))
-    x_limits = padded_limits(all_values)
+    # Use one common centering value so sensor-to-sensor offsets are preserved.
+    # This places the median distribution around zero without independently
+    # shifting each sensor.
+    center_value = np.median(median_values)
+    data = data - center_value
+    median_values = median_values - center_value
+    x_limits = (DEFAULT_X_MIN, DEFAULT_X_MAX)
     x_grid = np.linspace(x_limits[0], x_limits[1], grid_points)
 
     figure, axes = plt.subplots(
@@ -210,7 +206,7 @@ def write_plot(
     axes_list = list(axes.flat)
 
     figure.suptitle(
-        "LI200R median-centered solar-radiation distributions\n"
+        "LI200R commonly centered solar-radiation distributions\n"
         f"{start_time_text} to {end_time_text}",
         fontsize=17,
     )
